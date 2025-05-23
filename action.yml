@@ -20,6 +20,10 @@ inputs:
     description: 'Composer version (i.e. v2, v3)'
     required: false
     default: ''
+  composer-file-path:
+    description: 'Composer file path'
+    required: false
+    default: 'composer.json'
   php-extensions:
     description: 'PHP extensions to install (comma-separated, prefix with : to disable)'
     required: false
@@ -124,11 +128,11 @@ runs:
       name: Resolve PHP Tools
       shell: bash
       run: |
-        if [[ ${{ inputs.php-tools }} == *"composer"* ]]; then
+        if [[ "${{ inputs.php-tools }}" == *"composer"* ]]; then
           echo "php-tools=${{ inputs.php-tools }}" >> $GITHUB_OUTPUT
         else
           version=${{ inputs.composer-version }}
-          if [[ $version == '' ]]; then
+          if [[ "${version}" == '' ]]; then
             echo "php-tools=${{ inputs.php-tools }},composer" >> $GITHUB_OUTPUT
           else
             echo "php-tools=${{ inputs.php-tools }},composer:${version}" >> $GITHUB_OUTPUT
@@ -163,7 +167,7 @@ runs:
       id: composer-cache
       shell: bash
       run: |
-        if [ -f composer.json ]; then
+        if [ -f ${{ inputs.composer-file-path }} ]; then
           echo "dir=$(composer config cache-files-dir)" >> $GITHUB_OUTPUT
         fi
 
@@ -172,48 +176,48 @@ runs:
       uses: actions/cache@v4
       with:
         path: ${{ steps.composer-cache.outputs.dir }}
-        key: ${{ runner.os }}-${{ inputs.php-cache }}-${{ hashFiles('**/composer.lock') }}
+        key: ${{ runner.os }}-${{ inputs.php-cache }}-${{ hashFiles(inputs.composer-file-path) }}
         restore-keys: ${{ runner.os }}-${{ inputs.php-cache }}-
 
     - name: Install Composer
       shell: bash
       run: |
-        if [ ${{ inputs.install-composer }} = 'true' ]; then
+        if [ "${{ inputs.install-composer }}" = 'true' ]; then
           composer ${{ inputs.install-composer-cmd }}
         fi
 
     - name: Install Node Dependencies
       shell: bash
       run: |
-        if [ ${{ inputs.install-node }} = 'true' ]; then
+        if [ "${{ inputs.install-node }}" = 'true' ]; then
           ${{ inputs.install-node-cmd }}
         fi
 
     - name: Copy .env
       shell: bash
       run: |
-        if [ ${{ inputs.copy-env }} = 'true' ]; then
+        if [ "${{ inputs.copy-env }}" = 'true' ]; then
           cp .env.example .env
         fi
 
     - name: Generate application key
       shell: bash
       run: |
-        if [ ${{ inputs.generate-key }} = 'true' ]; then
+        if [ "${{ inputs.generate-key }}" = 'true' ]; then
           php artisan key:generate
         fi
 
     - name: Generate Ziggy routes
       shell: bash
       run: |
-        if [ ${{ inputs.ziggy }} = 'true' ]; then
+        if [ "${{ inputs.ziggy }}" = 'true' ]; then
           php artisan ziggy:generate
         fi
 
     - name: Run Node Build
       shell: bash
       run: |
-        if [ ${{ inputs.node-build }} = 'true' ]; then
+        if [ "${{ inputs.node-build }}" = 'true' ]; then
           ${{ inputs.node-build-cmd }}
         fi
 
