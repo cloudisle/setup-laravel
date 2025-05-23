@@ -1,0 +1,214 @@
+name: 'Setup Laravel Environment'
+description: 'Sets up PHP and Node.js for Laravel workflows'
+author: 'Laravel Community'
+
+inputs:
+  # PHP Setup Inputs
+  php-version:
+    description: 'PHP version to set up (e.g., 8.2, 8.3, latest)'
+    required: false
+    default: '8.2'
+  php-version-file:
+    description: 'File containing the PHP version to use (e.g., .php-version)'
+    required: false
+    default: ''
+  php-cache:
+    description: 'PHP cache'
+    required: false
+    default: 'composer'
+  composer-version:
+    description: 'Composer version (i.e. v2, v3)'
+    required: false
+    default: ''
+  php-extensions:
+    description: 'PHP extensions to install (comma-separated, prefix with : to disable)'
+    required: false
+    default: 'mbstring, xml, curl, zip, pdo, sqlite, mysql, pgsql, bcmath, gd, intl, redis, memcached'
+  php-ini-file:
+    description: 'Base php.ini file (production, development, none)'
+    required: false
+    default: 'production'
+  php-ini-values:
+    description: 'PHP ini values to add (comma-separated)'
+    required: false
+    default: 'memory_limit=256M, max_execution_time=180'
+  php-coverage:
+    description: 'PHP code coverage driver (xdebug, pcov, none)'
+    required: false
+    default: 'xdebug'
+  php-tools:
+    description: 'PHP tools to set up (comma-separated)'
+    required: false
+    default: ''
+  
+  # Node.js Setup Inputs
+  node-version:
+    description: 'Node.js version to set up (e.g., 18, 20, lts/*)'
+    required: false
+    default: '18'
+  node-version-file:
+    description: 'File containing the Node.js version to use (e.g., .nvmrc, .node-version)'
+    required: false
+    default: ''
+  node-check-latest:
+    description: 'Check for the latest available version that satisfies the version spec'
+    required: false
+    default: 'false'
+  node-architecture:
+    description: 'Target architecture for Node.js to use (x86, x64)'
+    required: false
+    default: ''
+  node-cache:
+    description: 'Package manager for caching (npm, yarn, pnpm)'
+    required: false
+    default: 'npm'
+  node-cache-dependency-path:
+    description: 'Path to dependency file for caching'
+    required: false
+    default: ''
+  node-registry-url:
+    description: 'Registry URL for Node.js package manager'
+    required: false
+    default: ''
+  node-scope:
+    description: 'Scope for authenticating against scoped registries'
+    required: false
+    default: ''
+  node-always-auth:
+    description: 'Set always-auth option in npmrc file'
+    required: false
+    default: ''
+
+  # Setup Inputs
+  install-composer:
+    description: 'Install Composer'
+    required: false
+    default: 'true'
+  install-composer-cmd:
+    description: 'Composer install command'
+    required: false
+    default: 'install --no-interaction --prefer-dist --optimize-autoloader'
+  install-node:
+    description: 'Install Node.js'
+    required: false
+    default: 'true'
+  install-node-cmd:
+    description: 'Node install command'
+    required: false
+    default: 'npm ci'
+  copy-env:
+    description: 'Copy .env file'
+    required: false
+    default: 'true'
+  generate-key:
+    description: 'Generate application key'
+    required: false
+    default: 'true'
+  ziggy:
+    description: 'Generate Ziggy routes'
+    required: false
+    default: 'true'
+  node-build:
+    description: 'Run npm run build command'
+    required: false
+    default: 'true'
+  node-build-cmd:
+    description: 'Node build command'
+    required: false
+    default: 'npm run build'
+
+runs:
+  using: "composite"
+  steps:
+    - id: resolve-php-tools
+      name: Resolve PHP Tools
+      run: |
+        if [[ ${{ inputs.php-tools }} == *"composer"* ]]; then
+          echo "php-tools=${{ inputs.php-tools }}" >> $GITHUB_OUTPUT
+        else
+          version=${{ inputs.composer-version }}
+          if [[ $version == '' ]]; then
+            echo "php-tools=${{ inputs.php-tools }},composer" >> $GITHUB_OUTPUT
+          else
+            echo "php-tools=${{ inputs.php-tools }},composer:${version}" >> $GITHUB_OUTPUT
+          fi
+        fi
+
+    - name: Setup PHP
+      uses: shivammathur/setup-php@v2
+      with:
+        php-version: ${{ inputs.php-version }}
+        php-version-file: ${{ inputs.php-version-file }}
+        extensions: ${{ inputs.php-extensions }}
+        ini-file: ${{ inputs.php-ini-file }}
+        ini-values: ${{ inputs.php-ini-values }}
+        coverage: ${{ inputs.php-coverage }}
+        tools: ${{ steps.resolve-php-tools.outputs.php-tools }}
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ inputs.node-version }}
+        node-version-file: ${{ inputs.node-version-file }}
+        check-latest: ${{ inputs.node-check-latest }}
+        architecture: ${{ inputs.node-architecture }}
+        cache: ${{ inputs.node-cache }}
+        cache-dependency-path: ${{ inputs.node-cache-dependency-path }}
+        registry-url: ${{ inputs.node-registry-url }}
+        scope: ${{ inputs.node-scope }}
+        always-auth: ${{ inputs.node-always-auth }}
+
+    - name: Resolve Composer Cache Directory
+      id: composer-cache
+      run: |
+        if [ -f composer.json ]; then
+          echo "dir=$(composer config cache-files-dir)" >> $GITHUB_OUTPUT
+        fi
+
+    - name: Cache dependencies
+      if: ${{ inputs.php-cache }}
+      uses: actions/cache@v4
+      with:
+        path: ${{ steps.composer-cache.outputs.dir }}
+        key: ${{ runner.os }}-${{ inputs.php-cache }}-${{ hashFiles('**/composer.lock') }}
+        restore-keys: ${{ runner.os }}-${{ inputs.php-cache }}-
+
+    - name: Install Composer
+      run: |
+        if [ ${{ inputs.install-composer }} = 'true' ]; then
+          composer ${{ inputs.install-composer-cmd }}
+        fi
+
+    - name: Install Node Dependencies
+      run: |
+        if [ ${{ inputs.install-node }} = 'true' ]; then
+          ${{ inputs.install-node-cmd }}
+        fi
+
+    - name: Copy .env
+      run: |
+        if [ ${{ inputs.copy-env }} = 'true' ]; then
+          cp .env.example .env
+        fi
+
+    - name: Generate application key
+      run: |
+        if [ ${{ inputs.generate-key }} = 'true' ]; then
+          php artisan key:generate
+        fi
+
+    - name: Generate Ziggy routes
+      run: |
+        if [ ${{ inputs.ziggy }} = 'true' ]; then
+          php artisan ziggy:generate
+        fi
+
+    - name: Run Node Build
+      run: |
+        if [ ${{ inputs.node-build }} = 'true' ]; then
+          ${{ inputs.node-build-cmd }}
+        fi
+
+branding:
+  icon: 'box'
+  color: 'red'
