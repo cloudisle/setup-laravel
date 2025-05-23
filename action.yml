@@ -128,13 +128,17 @@ runs:
       name: Resolve PHP Tools
       shell: bash
       run: |
+        echo "Resolving PHP Tools to install"
         if [[ "${{ inputs.php-tools }}" == *"composer"* ]]; then
+          echo "Composer is in the list of tools to install"
           echo "php-tools=${{ inputs.php-tools }}" >> $GITHUB_OUTPUT
         else
           version=${{ inputs.composer-version }}
           if [[ "${version}" == '' ]]; then
+            echo "Composer version is not specified. Using Default"
             echo "php-tools=${{ inputs.php-tools }},composer" >> $GITHUB_OUTPUT
           else
+            echo "Composer version is specified. Using composer:${version}"
             echo "php-tools=${{ inputs.php-tools }},composer:${version}" >> $GITHUB_OUTPUT
           fi
         fi
@@ -167,8 +171,14 @@ runs:
       id: composer-cache
       shell: bash
       run: |
+        echo "Resolving Composer Cache Directory"
         if [ -f ${{ inputs.composer-file-path }} ]; then
-          echo "dir=$(composer config cache-files-dir)" >> $GITHUB_OUTPUT
+          dir=$(composer config cache-files-dir)
+          echo "Resolved cache path: ${dir}"
+          echo "dir=${dir}" >> $GITHUB_OUTPUT
+        else
+          echo "Composer file not found at ${{ inputs.composer-file-path }}"
+          exit 1
         fi
 
     - name: Cache dependencies
@@ -183,6 +193,7 @@ runs:
       shell: bash
       run: |
         if [ "${{ inputs.install-composer }}" = 'true' ]; then
+          echo "Installing Composer Dependencies: composer ${{ inputs.install-composer-cmd }}"
           composer ${{ inputs.install-composer-cmd }}
         fi
 
@@ -190,6 +201,7 @@ runs:
       shell: bash
       run: |
         if [ "${{ inputs.install-node }}" = 'true' ]; then
+          echo "Installing Node Dependencies: ${{ inputs.install-node-cmd }}"
           ${{ inputs.install-node-cmd }}
         fi
 
@@ -197,13 +209,16 @@ runs:
       shell: bash
       run: |
         if [ "${{ inputs.copy-env }}" = 'true' ]; then
+          echo "Copying .env"
           cp .env.example .env
+          echo "Copied .env"
         fi
 
     - name: Generate application key
       shell: bash
       run: |
         if [ "${{ inputs.generate-key }}" = 'true' ]; then
+          echo "Generating application key"
           php artisan key:generate
         fi
 
@@ -211,6 +226,7 @@ runs:
       shell: bash
       run: |
         if [ "${{ inputs.ziggy }}" = 'true' ]; then
+          echo "Generating Ziggy routes"
           php artisan ziggy:generate
         fi
 
@@ -218,6 +234,7 @@ runs:
       shell: bash
       run: |
         if [ "${{ inputs.node-build }}" = 'true' ]; then
+          echo "Running Node Build: ${{ inputs.node-build-cmd }}"
           ${{ inputs.node-build-cmd }}
         fi
 
