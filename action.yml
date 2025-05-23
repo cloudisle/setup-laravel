@@ -122,6 +122,7 @@ runs:
   steps:
     - id: resolve-php-tools
       name: Resolve PHP Tools
+      shell: bash
       run: |
         if [[ ${{ inputs.php-tools }} == *"composer"* ]]; then
           echo "php-tools=${{ inputs.php-tools }}" >> $GITHUB_OUTPUT
@@ -160,6 +161,7 @@ runs:
 
     - name: Resolve Composer Cache Directory
       id: composer-cache
+      shell: bash
       run: |
         if [ -f composer.json ]; then
           echo "dir=$(composer config cache-files-dir)" >> $GITHUB_OUTPUT
@@ -174,36 +176,42 @@ runs:
         restore-keys: ${{ runner.os }}-${{ inputs.php-cache }}-
 
     - name: Install Composer
+      shell: bash
       run: |
         if [ ${{ inputs.install-composer }} = 'true' ]; then
           composer ${{ inputs.install-composer-cmd }}
         fi
 
     - name: Install Node Dependencies
+      shell: bash
       run: |
         if [ ${{ inputs.install-node }} = 'true' ]; then
           ${{ inputs.install-node-cmd }}
         fi
 
     - name: Copy .env
+      shell: bash
       run: |
         if [ ${{ inputs.copy-env }} = 'true' ]; then
           cp .env.example .env
         fi
 
     - name: Generate application key
+      shell: bash
       run: |
         if [ ${{ inputs.generate-key }} = 'true' ]; then
           php artisan key:generate
         fi
 
     - name: Generate Ziggy routes
+      shell: bash
       run: |
         if [ ${{ inputs.ziggy }} = 'true' ]; then
           php artisan ziggy:generate
         fi
 
     - name: Run Node Build
+      shell: bash
       run: |
         if [ ${{ inputs.node-build }} = 'true' ]; then
           ${{ inputs.node-build-cmd }}
